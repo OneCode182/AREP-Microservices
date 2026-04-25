@@ -1,0 +1,10 @@
+target/
+.env
+*.pem
+*.key
+.idea/
+*.iml
+.DS_Store
+*.class
+*.jar
+data/
