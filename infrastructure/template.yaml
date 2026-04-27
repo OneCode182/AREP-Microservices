@@ -32,6 +32,10 @@ Resources:
     Properties:
       StageName: prod
       TracingEnabled: true
+      Cors:
+        AllowMethods: "'GET,POST,OPTIONS'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowOrigin: "'*'"
 
   UserFunction:
     Type: AWS::Serverless::Function
