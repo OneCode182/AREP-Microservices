@@ -47,7 +47,15 @@ public class PostsHandler implements RequestHandler<APIGatewayProxyRequestEvent,
 
             Map<String, Object> authContext = extractAuthorizerContext(input);
             String authorSub = getString(authContext, "sub");
-            String authorName = getString(authContext, "name");
+            
+            String jwtName = getString(authContext, "name");
+            String authorName = "";
+            if (bodyJson.has("authorName") && !bodyJson.get("authorName").isJsonNull()) {
+                authorName = bodyJson.get("authorName").getAsString().trim();
+            }
+            if (authorName.isEmpty()) {
+                authorName = jwtName;
+            }
 
             String id = UUID.randomUUID().toString();
             String createdAt = Instant.now().toString();
