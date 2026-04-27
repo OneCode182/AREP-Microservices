@@ -1,0 +1,11 @@
+version = 0.1
+[default]
+[default.deploy]
+region = "us-west-2"
+confirm_changeset = true
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1234567890ab"
+s3_prefix = "arep-twitter"
+stack_name = "arep-twitter"
+capabilities = "CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM"
+parameter_overrides = ""
+image_repositories = []
