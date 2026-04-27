@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuth0 } from '@auth0/auth0-react';
 import { useApi } from '../hooks/useApi';
 
 interface PostFormProps {
@@ -9,6 +10,7 @@ const MAX_CHARS = 140;
 
 export default function PostForm({ onPostCreated }: PostFormProps) {
   const { fetchWithAuth } = useApi();
+  const { user } = useAuth0();
   const [content, setContent] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -24,7 +26,7 @@ export default function PostForm({ onPostCreated }: PostFormProps) {
     try {
       await fetchWithAuth('/api/posts', {
         method: 'POST',
-        body: JSON.stringify({ content }),
+        body: JSON.stringify({ content, authorName: user?.name || '' }),
       });
       setContent('');
       onPostCreated();
