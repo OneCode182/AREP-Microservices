@@ -8,99 +8,60 @@
 ![Auth0](https://img.shields.io/badge/Auth0-Security-EB5424?logo=auth0&logoColor=white)
 ![DynamoDB](https://img.shields.io/badge/DynamoDB-Storage-4053D6?logo=amazondynamodb&logoColor=white)
 
+
+
+
+
 ## Description
 
-AREP Twitter is a simplified Twitter-like application built as a university project for the AREP course at Escuela Colombiana de Ingeniería Julio Garavito. Users can create posts of up to 140 characters and view a public stream of all posts — no sign-up forms, no passwords. Authentication is handled entirely by Auth0 using OAuth2/OIDC, so users log in through Auth0's Universal Login and receive a JWT that the backend validates on every protected request.
+AREP Twitter is a simplified Twitter-like application built as a university project for the AREP course at Escuela Colombiana de Ingeniería Julio Garavito. Users can create posts of up to 140 characters and view a public stream of all posts. Authentication is handled entirely by **Auth0** using OAuth2/OIDC — no sign-up forms, no passwords. Users log in through Auth0's Universal Login and receive a JWT that the backend validates on every protected request.
 
-The project is implemented in three phases: a Spring Boot monolith backed by an H2 database (Phase 1), a React SPA with Auth0 integration and a dark-theme UI (Phase 2), and three AWS Lambda microservices behind API Gateway with DynamoDB replacing H2 for persistent post storage (Phase 3). Infrastructure is defined as code using AWS SAM, and the frontend can be hosted statically on S3.
+![architecture](./media/architecture.png)
 
-## Architecture Diagrams
+The project evolves through three phases:
+1. **Monolith** — Spring Boot + H2 database (local development)
+2. **Frontend SPA** — React + Vite + TypeScript with Auth0 integration
+3. **Microservices on AWS** — Three Lambda functions behind API Gateway with DynamoDB, frontend hosted on S3
 
-### 1. Monolith (Phase 1)
+## Architecture
 
-```mermaid
-graph TD
-    Browser -->|HTTP| SB[Spring Boot :8080]
-    SB --> SC[SecurityConfig\nAuth0 JWT validator]
-    SC -->|public| StreamCtrl[StreamController\nGET /api/stream]
-    SC -->|public| PostsGetCtrl[PostController\nGET /api/posts]
-    SC -->|JWT required| PostsPostCtrl[PostController\nPOST /api/posts]
-    SC -->|JWT required| UserCtrl[UserController\nGET /api/me]
-    StreamCtrl --> PS[PostService]
-    PostsGetCtrl --> PS
-    PostsPostCtrl --> PS
-    PS --> PR[PostRepository]
-    PR --> H2[(H2 File DB\n./data/twitter-db)]
-    UserCtrl -->|reads claims| JWT{{Auth0 JWT}}
-    SB --> Swagger[Swagger UI\n/swagger-ui.html]
-    Auth0[(Auth0 Tenant\nonecode1.us.auth0.com)] -->|issues JWT| Browser
-```
-
-### 2. Frontend (Phase 2)
+### Monolith (Local Development)
 
 ```mermaid
 graph TD
-    User -->|opens| Browser[React SPA\nlocalhost:5173]
-    Browser --> AP[Auth0Provider\nmain.tsx]
-    AP --> App[App.tsx\nisLoading guard]
-    App --> Navbar[Navbar.tsx]
-    Navbar -->|unauthenticated| LI[LoginButton\nloginWithRedirect]
-    Navbar -->|authenticated| LO[LogoutButton\nlogout + returnTo]
-    App -->|authenticated only| UP[UserProfile\nfetchWithAuth /api/me]
-    App -->|authenticated only| PF[PostForm\nfetchWithAuth POST /api/posts\n140-char counter]
-    App --> SF[StreamFeed\nfetchPublic GET /api/stream\nrefreshKey polling]
-    LI -->|redirect| Auth0[(Auth0 Universal Login)]
-    Auth0 -->|callback + token| AP
-    UP --> Hook[useApi.ts\ngetAccessTokenSilently]
-    PF --> Hook
-    SF --> Hook
-    Hook -->|Bearer JWT| API[Monolith API\nlocalhost:8080]
+    Browser -->|HTTP| SB["Spring Boot :8080"]
+    SB --> SC["SecurityConfig\nJWT Validation"]
+    SC -->|public| Stream["GET /api/stream"]
+    SC -->|public| PostsGet["GET /api/posts"]
+    SC -->|JWT| PostsPost["POST /api/posts"]
+    SC -->|JWT| UserMe["GET /api/me"]
+    Stream --> PS["PostService"]
+    PostsGet --> PS
+    PostsPost --> PS
+    PS --> H2[("H2 Database")]
+    Auth0["Auth0"] -->|issues JWT| Browser
 ```
 
-### 3. Microservices + Deployment (Phase 3)
-
-```mermaid
-graph TD
-    Browser -->|HTTPS| APIGW[API Gateway\n/prod]
-    APIGW -->|GET /api/me| UF[UserFunction\nUserHandler.java]
-    APIGW -->|POST /api/posts| PF[PostsFunction\nPostsHandler.java]
-    APIGW -->|GET /api/stream\nGET /api/posts| SF[StreamFunction\nStreamHandler.java]
-    PF -->|putItem| DDB[(DynamoDB\narep-twitter-posts)]
-    SF -->|scan| DDB
-    UF -->|reads authorizer context| APIGW
-    SAM[SAM template.yaml] -->|sam deploy| CF[CloudFormation Stack]
-    CF --> APIGW
-    CF --> DDB
-    CF --> UF
-    CF --> PF
-    CF --> SF
-    FE[React dist/] -->|aws s3 sync| S3[(S3 Static Hosting)]
-    S3 --> Browser
-```
-
-### 4. Auth0 Flow
+### Auth0 Authentication Flow
 
 ```mermaid
 sequenceDiagram
     participant U as User
     participant SPA as React SPA
-    participant A0 as Auth0 Tenant
-    participant API as Backend API
+    participant A0 as Auth0
+    participant API as API Gateway + Lambda
 
     U->>SPA: clicks Login
-    SPA->>A0: loginWithRedirect()\nredirect_uri=window.location.origin
-    A0->>U: Universal Login page
-    U->>A0: authenticates (social / username)
-    A0->>SPA: callback with authorization code
-    SPA->>A0: exchange code for tokens
+    SPA->>A0: redirect to Universal Login
+    A0->>U: login page
+    U->>A0: authenticates
+    A0->>SPA: authorization code
+    SPA->>A0: exchange for tokens
     A0->>SPA: access_token (JWT) + id_token
-    SPA->>API: GET /api/me\nAuthorization: Bearer <access_token>
-    API->>A0: validate JWT (audience + issuer)
+    SPA->>API: POST /api/posts (Bearer JWT)
+    API->>A0: validate JWT
     A0-->>API: valid
-    API->>SPA: { sub, email, name }
-    U->>SPA: clicks Logout
-    SPA->>A0: logout(returnTo=origin)
-    A0->>SPA: redirect back, session cleared
+    API->>SPA: 201 Created
 ```
 
 ## Table of Contents
@@ -120,9 +81,8 @@ sequenceDiagram
 - Java 17 (OpenJDK or Oracle)
 - Maven 3.9+
 - Node.js 18+ with npm
-- Auth0 tenant — already configured at `onecode1.us.auth0.com`
-- AWS account with IAM credentials (for Lambda + DynamoDB deployment)
-- AWS CLI v2 + SAM CLI (for deployment and optional local Lambda testing)
+- Auth0 tenant — configured at `onecode1.us.auth0.com`
+- AWS account with permissions for Lambda, API Gateway, DynamoDB, and S3
 
 ## Local Setup
 
@@ -205,137 +165,37 @@ curl -X POST http://localhost:8080/api/posts \
 
 ## AWS Deployment
 
-### ✅ Deployment Status
+### Deployment Status
 
-**✅ ALL DEPLOYMENT COMPLETE!** 
+All components are deployed and operational:
 
-- ✅ Lambda functions deployed to AWS
-- ✅ DynamoDB table created (`arep-twitter-posts`)
-- ✅ API Gateway running (`https://xgoucasuwj.execute-api.us-west-2.amazonaws.com/prod`)
-- ✅ Frontend updated with live API endpoint
-- ✅ Frontend ready for production (`dist/` folder)
+| Component | Service | Status |
+|---|---|---|
+| **Backend API** | API Gateway + 3 Lambda functions | ✅ Live |
+| **Database** | DynamoDB (`arep-twitter-posts`) | ✅ Live |
+| **Frontend** | S3 Static Website Hosting | ✅ Live |
+| **Authentication** | Auth0 (OAuth2/OIDC) | ✅ Configured |
 
-**Next (optional):** Deploy frontend to S3 for static hosting
+### Deployed Resources
 
-### Prerequisites
+- **API Gateway**: `https://xgoucasuwj.execute-api.us-west-2.amazonaws.com/prod`
+- **Lambda Functions**:
+  - `UserFunction` → `GET /api/me` (returns user profile from JWT)
+  - `PostsFunction` → `POST /api/posts` (creates a post, stores in DynamoDB)
+  - `StreamFunction` → `GET /api/stream`, `GET /api/posts` (reads all posts from DynamoDB)
+- **DynamoDB Table**: `arep-twitter-posts` (on-demand billing, partition key: `id`, sort key: `createdAt`)
+- **S3 Bucket**: `arep-twitter-frontend-sergiosilva` (static website hosting enabled)
 
-- AWS account with permissions for: Lambda, API Gateway, DynamoDB, S3, CloudFormation, IAM
-- AWS CLI v2: `aws configure` (set region, access key, secret key)
-- SAM CLI: [installation guide](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
+### Auth0 Configuration
 
-### ✅ Step 1: Lambda Functions Already Built
+Application Client ID: `EWtdI5Fnwx8BkAEBHjseTmclhSwMObl4`
 
-All three Lambda JARs have been compiled:
-- `microservices/user-function/target/user-function-0.0.1-SNAPSHOT.jar` ✅
-- `microservices/posts-function/target/posts-function-0.0.1-SNAPSHOT.jar` ✅
-- `microservices/stream-function/target/stream-function-0.0.1-SNAPSHOT.jar` ✅
-
-### Step 2: Deploy to AWS (Interactive)
-
-**Navigate to the infrastructure directory:**
-
-```bash
-cd infrastructure
-```
-
-**Run the interactive deployment command:**
-
-```bash
-"C:\Program Files\Amazon\AWSSAMCLI\bin\sam.cmd" deploy --guided
-```
-
-Or on macOS/Linux:
-
-```bash
-sam deploy --guided
-```
-
-### Step 3: Answer the SAM Deploy Prompts
-
-When prompted, enter these values:
-
-```
-Stack Name [sam-app]: arep-twitter
-Region [us-west-2]: us-west-2
-Confirm changes before deploy [y/N]: y
-Allow SAM CLI IAM role creation [Y/n]: Y
-Save parameters to samconfig.toml [Y/n]: Y
-```
-
-**Important:** Answer `y` to "Confirm changes before deploy" — this shows you the resources being created before applying them.
-
-Deployment will take 2-5 minutes. You'll see output like:
-
-```
-Outputs:
-  ApiEndpoint: https://abc123xyz.execute-api.us-west-2.amazonaws.com/prod
-  PostsTableName: arep-twitter-posts
-```
-
-**Save the ApiEndpoint URL** — you'll need it in Step 4.
-
-### Step 4: Update Frontend with API Gateway URL
-
-After deployment completes, edit `frontend/.env`:
-
-```bash
-cd ../frontend
-```
-
-Replace the placeholder with the actual API endpoint from the deployment output:
-
-```env
-VITE_API_URL=https://[api-id].execute-api.us-west-2.amazonaws.com/prod
-```
-
-Example:
-```env
-VITE_API_URL=https://abc123xyz.execute-api.us-west-2.amazonaws.com/prod
-```
-
-Then rebuild:
-
-```bash
-npm run build
-```
-
-The frontend is now ready to be deployed to S3 (optional).
-
-### Step 5: (Optional) Deploy Frontend to S3
-
-```bash
-# Create S3 bucket (replace with your bucket name)
-aws s3 mb s3://arep-twitter-frontend --region us-west-2
-
-# Enable static website hosting
-aws s3 website s3://arep-twitter-frontend \
-  --index-document index.html \
-  --error-document index.html
-
-# Make bucket public
-aws s3api put-bucket-policy --bucket arep-twitter-frontend --policy '{
-  "Version": "2012-10-17",
-  "Statement": [{
-    "Effect": "Allow",
-    "Principal": "*",
-    "Action": "s3:GetObject",
-    "Resource": "arn:aws:s3:::arep-twitter-frontend/*"
-  }]
-}'
-
-# Upload build output
-aws s3 sync frontend/dist/ s3://arep-twitter-frontend --region us-west-2
-```
-
-Frontend URL: `http://arep-twitter-frontend.s3-website-us-west-2.amazonaws.com`
-
-### Step 6: (Optional) Configure Auth0 for Production
-
-In the Auth0 dashboard for application `EWtdI5Fnwx8BkAEBHjseTmclhSwMObl4`:
-
-- **Allowed Callback URLs:** add the S3 frontend URL from Step 5 (or localhost for testing)
-- **Allowed Logout URLs:** add the same S3 frontend URL
-- **Allowed Web Origins:** add the same S3 frontend URL
+| Auth0 Setting | Values |
+|---|---|
+| **Allowed Callback URLs** | `http://localhost:5173`, S3 frontend URL |
+| **Allowed Logout URLs** | `http://localhost:5173`, S3 frontend URL |
+| **Allowed Web Origins** | `http://localhost:5173`, S3 frontend URL |
+| **Allowed Origins (CORS)** | `http://localhost:5173`, S3 frontend URL |
 
 ## Testing
 
@@ -460,19 +320,13 @@ AREP-Microservices/
 
 ## Links
 
-### Deployment Endpoints
-
-| Component | Status | URL |
-|-----------|--------|-----|
-| **Swagger UI (local)** | ✅ Ready | http://localhost:8080/swagger-ui.html |
-| **Auth0 Tenant** | ✅ Configured | https://onecode1.us.auth0.com |
-| **API Gateway (AWS)** | ✅ **DEPLOYED** | https://xgoucasuwj.execute-api.us-west-2.amazonaws.com/prod |
-| **Frontend S3 (AWS)** | ⏳ Deploy with `aws s3 sync` (optional) | http://arep-twitter-frontend.s3-website-us-west-2.amazonaws.com |
-
-**After running `sam deploy --guided`:**
-- The API Gateway endpoint will be printed in the output
-- Update `frontend/.env` with the actual endpoint
-- Optionally upload frontend to S3
+| Component | URL |
+|---|---|
+| **Frontend (S3)** | https://arep-twitter-frontend-sergiosilva.s3.us-west-2.amazonaws.com/index.html |
+| **Backend API (API Gateway)** | https://xgoucasuwj.execute-api.us-west-2.amazonaws.com/prod |
+| **Public Stream (no auth)** | https://xgoucasuwj.execute-api.us-west-2.amazonaws.com/prod/api/stream |
+| **Auth0 Tenant** | https://onecode1.us.auth0.com |
+| **Swagger UI (local only)** | http://localhost:8080/swagger-ui.html |
 
 ## Video Demo
 
@@ -485,6 +339,11 @@ Record a 5-8 minute walkthrough demonstrating:
 4. Logout from Auth0
 5. Show Swagger UI at http://localhost:8080/swagger-ui.html
 6. Show AWS Console (Lambda, DynamoDB, API Gateway)
+
+**Demo Script Available:** See [guion.md](guion.md) for a 5-minute presentation script.
+- Complete walkthrough with screen capture timing
+- Covers: E2E flow, Swagger, Diagrams, Auth0 OAuth, Testing, Architecture
+- Ready for recording with transitions and notes
 
 Upload video link here: [Video demo link]
 
@@ -527,12 +386,12 @@ Upload video link here: [Video demo link]
   - [x] AWS SDK v2 (`software.amazon.awssdk`) — not v1
   - [x] All 3 handlers compile: `mvn clean package` produces fat JAR ✅
 
-- [ ] **Deployment (AWS)** — 5% ⏳ Ready to deploy
-  - [ ] SAM `template.yaml` defines Lambda functions, API Gateway, DynamoDB table ✅ (ready)
-  - [ ] `sam deploy --guided` creates CloudFormation stack (next step)
-  - [ ] DynamoDB table `arep-twitter-posts` created with on-demand billing
-  - [ ] API Gateway routes `/api/me`, `/api/posts`, `/api/stream` to correct handlers
-  - [ ] Frontend `dist/` uploaded to S3 with static website hosting enabled (optional)
+- [x] **Deployment (AWS)** — 5% ✅
+  - [x] CloudFormation stack `arep-twitter` deployed in `us-west-2`
+  - [x] DynamoDB table `arep-twitter-posts` created with on-demand billing
+  - [x] API Gateway routes `/api/me`, `/api/posts`, `/api/stream` to correct Lambda handlers
+  - [x] Frontend `dist/` hosted on S3 with static website hosting enabled
+  - [x] Auth0 configured with S3 frontend URL for callbacks and CORS
 
 ### Non-Functional Requirements (30%)
 
