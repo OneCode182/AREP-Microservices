@@ -8,10 +8,10 @@
 ![Auth0](https://img.shields.io/badge/Auth0-Security-EB5424?logo=auth0&logoColor=white)
 ![DynamoDB](https://img.shields.io/badge/DynamoDB-Storage-4053D6?logo=amazondynamodb&logoColor=white)
 
-
-
-https://github.com/user-attachments/assets/bd84d922-f68a-46a1-85dc-0d52cfca8fb2
-
+> [!NOTE]
+> _"Please enable audio in the demo video to hear the full demonstration and instructions."_
+<video src="https://github.com/user-attachments/assets/bd84d922-f68a-46a1-85dc-0d52cfca8fb2" controls="controls" style="max-width: 100%;">
+</video>
 
 
 
