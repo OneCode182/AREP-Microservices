@@ -5,7 +5,18 @@ export default function LogoutButton() {
   return (
     <button
       className="btn btn-danger"
-      onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}
+      onClick={() =>
+        logout({
+          logoutParams: {
+            returnTo:
+              window.location.origin +
+              (window.location.pathname === '/' &&
+              window.location.hostname.includes('amazonaws')
+                ? '/index.html'
+                : window.location.pathname),
+          },
+        })
+      }
     >
       Log Out
     </button>

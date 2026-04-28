@@ -11,7 +11,7 @@ root.render(
     cacheLocation="localstorage"
     useRefreshTokens={true}
     authorizationParams={{
-      redirect_uri: window.location.origin,
+      redirect_uri: window.location.origin + (window.location.pathname === '/' && window.location.hostname.includes('amazonaws') ? '/index.html' : window.location.pathname),
       audience: import.meta.env.VITE_AUTH0_AUDIENCE,
     }}
   >

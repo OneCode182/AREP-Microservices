@@ -16,7 +16,7 @@
 
 AREP Twitter is a simplified Twitter-like application built as a university project for the AREP course at Escuela Colombiana de Ingeniería Julio Garavito. Users can create posts of up to 140 characters and view a public stream of all posts. Authentication is handled entirely by **Auth0** using OAuth2/OIDC — no sign-up forms, no passwords. Users log in through Auth0's Universal Login and receive a JWT that the backend validates on every protected request.
 
-![architecture](./media/architecture.png)
+
 
 The project evolves through three phases:
 1. **Monolith** — Spring Boot + H2 database (local development)
@@ -24,6 +24,10 @@ The project evolves through three phases:
 3. **Microservices on AWS** — Three Lambda functions behind API Gateway with DynamoDB, frontend hosted on S3
 
 ## Architecture
+
+### General Architecture
+
+![architecture](./media/architecture.png)
 
 ### Monolith (Local Development)
 
@@ -75,6 +79,16 @@ sequenceDiagram
 7. [Links](#links)
 8. [Evaluation Rubric](#evaluation-rubric)
 9. [Author](#author)
+
+## Links
+
+| Component | URL |
+|---|---|
+| **Frontend (S3)** | https://arep-twitter-frontend-sergiosilva.s3.us-west-2.amazonaws.com/index.html |
+| **Backend API (API Gateway)** | https://xgoucasuwj.execute-api.us-west-2.amazonaws.com/prod |
+| **Public Stream (no auth)** | https://xgoucasuwj.execute-api.us-west-2.amazonaws.com/prod/api/stream |
+| **Auth0 Tenant** | https://onecode1.us.auth0.com |
+| **Swagger UI (local only)** | http://localhost:8080/swagger-ui.html |
 
 ## Prerequisites
 
@@ -171,10 +185,10 @@ All components are deployed and operational:
 
 | Component | Service | Status |
 |---|---|---|
-| **Backend API** | API Gateway + 3 Lambda functions | ✅ Live |
-| **Database** | DynamoDB (`arep-twitter-posts`) | ✅ Live |
-| **Frontend** | S3 Static Website Hosting | ✅ Live |
-| **Authentication** | Auth0 (OAuth2/OIDC) | ✅ Configured |
+| **Backend API** | API Gateway + 3 Lambda functions | Live |
+| **Database** | DynamoDB (`arep-twitter-posts`) | Live |
+| **Frontend** | S3 Static Website Hosting | Live |
+| **Authentication** | Auth0 (OAuth2/OIDC) | Configured |
 
 ### Deployed Resources
 
@@ -318,125 +332,6 @@ AREP-Microservices/
 └── .gitignore
 ```
 
-## Links
-
-| Component | URL |
-|---|---|
-| **Frontend (S3)** | https://arep-twitter-frontend-sergiosilva.s3.us-west-2.amazonaws.com/index.html |
-| **Backend API (API Gateway)** | https://xgoucasuwj.execute-api.us-west-2.amazonaws.com/prod |
-| **Public Stream (no auth)** | https://xgoucasuwj.execute-api.us-west-2.amazonaws.com/prod/api/stream |
-| **Auth0 Tenant** | https://onecode1.us.auth0.com |
-| **Swagger UI (local only)** | http://localhost:8080/swagger-ui.html |
-
-## Video Demo
-
-*(Optional: +5% bonus)*
-
-Record a 5-8 minute walkthrough demonstrating:
-1. Frontend login via Auth0
-2. Create a post (≤140 characters)
-3. View post in the stream
-4. Logout from Auth0
-5. Show Swagger UI at http://localhost:8080/swagger-ui.html
-6. Show AWS Console (Lambda, DynamoDB, API Gateway)
-
-**Demo Script Available:** See [guion.md](guion.md) for a 5-minute presentation script.
-- Complete walkthrough with screen capture timing
-- Covers: E2E flow, Swagger, Diagrams, Auth0 OAuth, Testing, Architecture
-- Ready for recording with transitions and notes
-
-Upload video link here: [Video demo link]
-
----
-
-## Evaluation Rubric
-
-<details>
-<summary><b>Click to expand rubric</b></summary>
-
-### Functional Requirements (50%)
-
-- [x] **Monolith (Spring Boot + Auth0)** — 15% ✅
-  - [x] Spring Boot 3.3, Java 17, H2 file-based database
-  - [x] Auth0 JWT validation (audience `https://onecode1.us.auth0.com/api/v2/` + issuer `https://onecode1.us.auth0.com/`)
-  - [x] `GET /api/stream` — public, returns all posts newest-first
-  - [x] `GET /api/posts` — public, same as stream
-  - [x] `POST /api/posts` — authenticated, validates ≤140 chars, extracts sub+name from JWT, returns 201
-  - [x] `GET /api/me` — authenticated, returns `{ sub, email, name }` from JWT claims
-  - [x] Swagger UI at `/swagger-ui.html` with Bearer JWT security scheme
-  - [x] 6/6 automated tests passing ✅
-
-- [x] **Frontend (React SPA)** — 15% ✅
-  - [x] React 18 + Vite 5 + TypeScript (strict, no `any`)
-  - [x] Auth0 login/logout via `@auth0/auth0-react`
-  - [x] `useApi.ts` hook: `fetchWithAuth` (Bearer token) + `fetchPublic` (no token)
-  - [x] `PostForm`: textarea, green/red 140-char counter, error toast, disabled button when over limit
-  - [x] `StreamFeed`: public stream, refresh button, fadeIn animation on post cards
-  - [x] `UserProfile`: shows name and email from `/api/me`
-  - [x] `isLoading` guard in `App.tsx` (no render before auth resolves)
-  - [x] Single `index.css` with CSS custom properties, dark theme
-  - [x] `npm run build` succeeds with zero TypeScript errors
-
-- [x] **Microservices (Lambda)** — 15% ✅
-  - [x] `UserHandler`: extracts `sub`, `email`, `name` from API Gateway JWT authorizer context
-  - [x] `PostsHandler`: parses JSON body, validates ≤140 chars, generates UUID, writes to DynamoDB, returns 201
-  - [x] `StreamHandler`: scans DynamoDB, sorts by `createdAt` DESC, returns JSON array
-  - [x] DynamoDB item schema: `id` (S), `createdAt` (S), `content` (S), `authorSub` (S), `authorName` (S)
-  - [x] `POSTS_TABLE` from `System.getenv()` — no hardcoded table name
-  - [x] AWS SDK v2 (`software.amazon.awssdk`) — not v1
-  - [x] All 3 handlers compile: `mvn clean package` produces fat JAR ✅
-
-- [x] **Deployment (AWS)** — 5% ✅
-  - [x] CloudFormation stack `arep-twitter` deployed in `us-west-2`
-  - [x] DynamoDB table `arep-twitter-posts` created with on-demand billing
-  - [x] API Gateway routes `/api/me`, `/api/posts`, `/api/stream` to correct Lambda handlers
-  - [x] Frontend `dist/` hosted on S3 with static website hosting enabled
-  - [x] Auth0 configured with S3 frontend URL for callbacks and CORS
-
-### Non-Functional Requirements (30%)
-
-- [x] **Security** — 10% ✅
-  - [x] Auth0 JWT validated on every protected request (audience + issuer assertions)
-  - [x] CORS restricted to `http://localhost:5173` and `http://localhost:3000` on monolith
-  - [x] No secrets hardcoded in source code (only `application.yml` config and `.env`)
-  - [x] `.gitignore` excludes `target/`, `node_modules/`, `.env`, `*.pem`, `*.key`
-  - [x] Post content validated at ≤140 chars on both frontend and backend
-  - [x] Auth0 handles all authentication — no custom login/password, no `User` table
-
-- [x] **Code Quality** — 10% ✅
-  - [x] TypeScript: no `any` types, all API responses typed with interfaces
-  - [x] Java: `@Valid` + `@Size(max=140)` on `CreatePostRequest`, `ErrorResponse` DTO for exceptions
-  - [x] No `@CrossOrigin` on controllers — global `CorsConfig` only
-  - [x] `PostService` encapsulates business logic (not in controller)
-  - [x] Each Lambda handler catches exceptions and returns structured JSON error response
-
-- [x] **Documentation** — 10% ✅
-  - [x] README with 4 Mermaid architecture diagrams (monolith, frontend, microservices, Auth0 sequence)
-  - [x] Step-by-step local setup and run instructions
-  - [x] Step-by-step AWS deployment guide (Lambda via SAM, frontend via S3)
-  - [x] Test report: Phase 1 6/6 tests listed with descriptions, Phase 2 manual checklist
-  - [x] Links section: Swagger UI, API Gateway endpoint, S3 frontend URL, Auth0 tenant (updated with deployment status)
-  - [ ] Video demo (optional)
-
-### Bonus (up to +20%)
-
-- [ ] **Video demo** — 5-8 min walkthrough: login → post → stream → logout → AWS Console evidence (+5%)
-- [ ] **Docker Compose** for local monolith + DynamoDB local (no AWS needed) (+5%)
-- [ ] **Additional test coverage** (StreamController, PostService unit tests) (+5%)
-- [ ] **API versioning** (e.g., `/api/v1/posts`) (+3%)
-- [ ] **Rate limiting** or structured request logging (+2%)
-
-### Grading Scale
-
-| Score | Criteria |
-|-------|----------|
-| 90–100 | All functional + non-functional requirements met, clean code, complete documentation |
-| 80–89 | All functional requirements met, minor gaps in documentation or code quality |
-| 70–79 | Monolith + Frontend working, Lambda deployable but not live-tested |
-| 60–69 | Monolith working, Frontend incomplete or buggy |
-| <60 | Incomplete submission or critical failures |
-
-</details>
 
 ## Author
 
